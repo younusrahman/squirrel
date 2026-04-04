@@ -1,0 +1,13 @@
+{
+  "name": "squirrel",
+  "version": "1.0.0",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "peerDependencies": {
+    "react": ">=18.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.2",
+    "@types/react": "^19.0.0"
+  }
+}
