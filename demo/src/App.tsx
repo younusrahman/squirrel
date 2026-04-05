@@ -1,21 +1,43 @@
-import { useState } from "react";
-import "./App.css";
-import { AdminPanel } from "./component/AdminPanel";
-import { SocialFeed } from "./component/SocialFeed";
-import { UserProfile } from "./component/UserProfile";
-import { Header } from "./component/Header";
-import { Dashboard } from "./component/ComvitneStor";
+import ComponentA from "./component/ComponentA";
+import ComponentB from "./component/ComponentB";
+import ComponentC from "./component/ComponentC";
+import ComponentD from "./component/ComponentD";
+import ComponentE from "./component/ComponentE";
+import ComponentF from "./component/ComponentF";
+import { allCounters } from "./component/sharedLogic";
+import StandaloneStress from "./component/StandaloneStress";
 
 function App() {
+  const { get } = allCounters();
   return (
-    <>
-      <Header />
-      <UserProfile />
-      <SocialFeed />
-      <AdminPanel />
-      <Dashboard/>
-    </>
+    <div style={{ padding: "20px" }}>
+      <h1>Squirrel 5-Component System</h1>
+
+      {/* Global Display */}
+      <div style={{ background: "#333", color: "white", padding: "10px" }}>
+        <p>
+          A: {get().nodeValue.A.countA} | B: {get().nodeValue.B.countB} | C:{" "}
+          {get().nodeValue.C.countC} | D: {get().nodeValue.D.countD}
+        </p>
+      </div>
+
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: "10px",
+          marginTop: "10px",
+        }}
+      >
+        <ComponentA />
+        <ComponentB />
+        <ComponentC />
+        <ComponentD />
+      </div>
+      <ComponentE />
+      <ComponentF />
+      <StandaloneStress />
+    </div>
   );
 }
-
 export default App;
