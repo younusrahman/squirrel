@@ -4,11 +4,11 @@ import ComponentC from "./component/ComponentC";
 import ComponentD from "./component/ComponentD";
 import ComponentE from "./component/ComponentE";
 import ComponentF from "./component/ComponentF";
+import { UserWorkList } from "./component/ComponentList";
 import { allCounters } from "./component/sharedLogic";
-import StandaloneStress from "./component/StandaloneStress";
 
 function App() {
-  const { get } = allCounters();
+  const { get } = allCounters;
   return (
     <div style={{ padding: "20px" }}>
       <h1>Squirrel 5-Component System</h1>
@@ -36,7 +36,7 @@ function App() {
       </div>
       <ComponentE />
       <ComponentF />
-      <StandaloneStress />
+      <UserWorkList />
     </div>
   );
 }

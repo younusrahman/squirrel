@@ -7,7 +7,7 @@ export const storeE = CreateSquirrelStore({
 });
 
 export default function ComponentE() {
-  const { get, set, setAsync } = allCounters();
+  const { get, set, setAsync } = allCounters;
 
   const handleUpdate = (isAsync: boolean) => {
     const method = isAsync ? setAsync : set;

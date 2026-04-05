@@ -6,7 +6,7 @@ import { storeD } from "./ComponentD";
 import { storeE } from "./ComponentE"; // Add this
 import { storeF } from "./ComponentF"; // Add this
 
-export const allCounters = CombineSquirrelStore(() => ({
+export const allCounters = CombineSquirrelStore(({
   A: storeA,
   B: storeB,
   C: storeC,

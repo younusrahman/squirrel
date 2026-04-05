@@ -23,7 +23,7 @@ type StoreFKeys = keyof typeof initialFState;
 export const storeF = CreateSquirrelStore(initialFState);
 
 export default function ComponentF() {
-  const { get, set, setAsync } = allCounters();
+  const { get, set, setAsync } = allCounters;
 
   const runTest = (useAsync: boolean) => {
     // 2. Explicitly type the array so it's not 'never[]'
@@ -45,7 +45,7 @@ export default function ComponentF() {
 
     playlist.forEach((key) => {
       // Access raw state safely using the key
-      const currentVal = get().rawValue.F[key];
+      const currentVal = get().rawValue.static.F[key];
 
       // We only want to increment the counter keys, ignore booleans/numbers
       if (typeof currentVal === "number" && key.startsWith("c")) {
@@ -104,7 +104,7 @@ export default function ComponentF() {
 
       <div style={{ marginTop: "20px" }}>
         <button
-          disabled={get().rawValue.F.isRunning}
+          disabled={get().rawValue.static.F.isRunning}
           onClick={() => runTest(false)}
           style={{ background: "red", color: "white", padding: "10px" }}
         >
@@ -112,7 +112,7 @@ export default function ComponentF() {
         </button>
 
         <button
-          disabled={get().rawValue.F.isRunning}
+          disabled={get().rawValue.static.F.isRunning}
           onClick={() => runTest(true)}
           style={{
             background: "green",
@@ -125,9 +125,9 @@ export default function ComponentF() {
         </button>
       </div>
 
-      {get().rawValue.F.timeTaken > 0 && (
+      {get().rawValue.static.F.timeTaken > 0 && (
         <p>
-          Execution: <strong>{get().rawValue.F.timeTaken.toFixed(4)}ms</strong>
+          Execution: <strong>{get().rawValue.static.F.timeTaken.toFixed(4)}ms</strong>
         </p>
       )}
     </div>

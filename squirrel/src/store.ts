@@ -1,33 +1,49 @@
-import { useLayoutEffect, useRef, createElement, ReactNode } from "react";
+import React, {
+  useLayoutEffect,
+  useState,
+  createElement,
+  Fragment,
+  isValidElement,
+  cloneElement,
+  Children,
+  ReactNode,
+  useSyncExternalStore,
+} from "react";
 
 // --- 1. TYPE SYSTEM ---
+type ExtractState<T> = T extends SquirrelStoreInstance<infer S> ? S : never;
 
-type ExtractState<T> = T extends () => SquirrelStoreInstance<infer S>
-  ? S
-  : never;
-
-type CombinedRawValueState<T> = {
-  [K in keyof T]: ExtractState<T[K]>;
-};
+type CombinedRawValueState<T> = { [K in keyof T]: ExtractState<T[K]> };
 
 type NodeValueProxy<T> = {
   readonly [K in keyof T]: ReactNode;
 } & ((transform: (state: T) => ReactNode) => ReactNode);
 
+type RawValueAccess<T> = {
+  readonly static: Readonly<T>;
+  readonly reactive: Readonly<T>;
+};
+
 type CombinedNodeValueProxy<T> = {
   readonly [K in keyof T]: NodeValueProxy<ExtractState<T[K]>>;
 } & ((transform: (state: CombinedRawValueState<T>) => ReactNode) => ReactNode);
 
+type CombinedRawValueAccess<T> = {
+  readonly static: CombinedRawValueState<T>;
+  readonly reactive: CombinedRawValueState<T>;
+};
+
 export interface SquirrelStoreInstance<T> {
-  get: () => { nodeValue: NodeValueProxy<T>; rawValue: Readonly<T> };
+  get: () => { nodeValue: NodeValueProxy<T>; rawValue: RawValueAccess<T> };
   set: (next: Partial<T> | ((prev: T) => Partial<T>)) => void;
   setAsync: (next: Partial<T> | ((prev: T) => Partial<T>)) => void;
+  __subscribeAll?: (callback: () => void) => () => void;
 }
 
 export interface CombinedSquirrelInstance<T> {
   get: () => {
     nodeValue: CombinedNodeValueProxy<T>;
-    rawValue: CombinedRawValueState<T>;
+    rawValue: CombinedRawValueAccess<T>;
   };
   set: (patches: { [K in keyof T]?: Partial<ExtractState<T[K]>> }) => void;
   setAsync: (patches: { [K in keyof T]?: Partial<ExtractState<T[K]>> }) => void;
@@ -35,170 +51,247 @@ export interface CombinedSquirrelInstance<T> {
 
 type UpdateFn = (latestState: any) => void;
 
-// --- 2. INTERNAL ENGINE ---
+// --- 2. UTILS ---
+
+function processOutput(node: ReactNode): ReactNode {
+  if (Array.isArray(node)) {
+    return Children.map(node, (child, index) => {
+      if (isValidElement(child) && child.key === null) {
+        return cloneElement(child, { key: `sq-${index}` } as any);
+      }
+      return child;
+    });
+  }
+  return node;
+}
+
+// --- 3. INTERNAL ENGINE ---
 
 function InternalSquirrelEngine<T extends object>(
   initialState: T,
-): () => SquirrelStoreInstance<T> {
+): SquirrelStoreInstance<T> {
   let state: T = { ...initialState };
   let pendingPatches: Partial<T> = {};
   let isBatching = false;
+
   const subscribers = new Map<keyof T, Set<UpdateFn>>();
+  const globalSubscribers = new Set<() => void>();
 
   const notify = (key: keyof T) => {
     subscribers.get(key)?.forEach((update) => update(state));
   };
 
-  /** Direct-DOM injection component */
+  const notifyAll = () => {
+    globalSubscribers.forEach((fn) => fn());
+  };
+
+  const subscribeAll = (callback: () => void) => {
+    globalSubscribers.add(callback);
+    return () => {
+      globalSubscribers.delete(callback);
+    };
+  };
+
+  const useReactiveRaw = () =>
+    useSyncExternalStore(
+      subscribeAll,
+      () => state as Readonly<T>,
+      () => state as Readonly<T>,
+    );
+
   const SquirrelLeaf = ({
     transform,
-    propsToWatch,
+    manualKeys,
   }: {
     transform: (s: T) => ReactNode;
-    propsToWatch?: (keyof T)[];
+    manualKeys?: (keyof T)[];
   }) => {
-    const spanRef = useRef<HTMLSpanElement>(null);
+    const [view, setView] = useState<ReactNode>(null);
+
     useLayoutEffect(() => {
-      const el = spanRef.current;
-      if (!el) return;
-      const updateNodeValue = (latest: T) => {
-        el.textContent = String(transform(latest));
-      };
-      updateNodeValue(state);
-      const keys = propsToWatch || (Object.keys(state) as (keyof T)[]);
-      keys.forEach((k) => {
-        if (!subscribers.has(k)) subscribers.set(k, new Set());
-        subscribers.get(k)!.add(updateNodeValue);
+      const touchedKeys = new Set<keyof T>(manualKeys ?? []);
+
+      const tracker = new Proxy(state, {
+        get(target, prop) {
+          touchedKeys.add(prop as keyof T);
+          return (target as any)[prop];
+        },
       });
-      return () => {
-        keys.forEach((k) => subscribers.get(k)?.delete(updateNodeValue));
+
+      const updateView = (latest: T) => {
+        setView(processOutput(transform(latest)));
       };
-    }, [transform, propsToWatch]);
-    return createElement("span", { ref: spanRef });
+
+      updateView(tracker as T);
+
+      touchedKeys.forEach((k) => {
+        if (!subscribers.has(k)) subscribers.set(k, new Set());
+        subscribers.get(k)!.add(updateView);
+      });
+
+      return () => {
+        touchedKeys.forEach((k) => subscribers.get(k)?.delete(updateView));
+      };
+    }, [transform, manualKeys]);
+
+    return createElement(Fragment, null, view);
   };
 
   const createNodeValueProxy = (): NodeValueProxy<T> => {
     const baseFn = (transform: (s: T) => ReactNode) =>
       createElement(SquirrelLeaf, { transform });
+
     return new Proxy(baseFn, {
       get: (target, prop: string) => {
         if (prop in target) return (target as any)[prop];
         return createElement(SquirrelLeaf, {
           transform: (s: any) => s[prop],
-          propsToWatch: [prop as keyof T],
+          manualKeys: [prop as keyof T],
         });
       },
     }) as any;
   };
 
-  const instance = {
-    get: () => ({ nodeValue: createNodeValueProxy(), rawValue: state as Readonly<T> }),
-    set: (next: any) => {
+  const createRawValueAccess = (): RawValueAccess<T> => {
+    return {
+      get static() {
+        return state as Readonly<T>;
+      },
+      get reactive() {
+        return useReactiveRaw();
+      },
+    };
+  };
+
+  const instance: SquirrelStoreInstance<T> = {
+    get: () => ({
+      nodeValue: createNodeValueProxy(),
+      rawValue: createRawValueAccess(),
+    }),
+
+    set: (next) => {
       const patches = typeof next === "function" ? next(state) : next;
+      if (!patches || typeof patches !== "object") return;
+
       state = { ...state, ...patches };
       Object.keys(patches).forEach((k) => notify(k as keyof T));
+      notifyAll();
     },
-    setAsync: (next: any) => {
+
+    setAsync: (next) => {
       const patches = typeof next === "function" ? next(state) : next;
+      if (!patches || typeof patches !== "object") return;
+
       state = { ...state, ...patches };
       pendingPatches = { ...pendingPatches, ...patches };
+
       if (!isBatching) {
         isBatching = true;
         queueMicrotask(() => {
           const final = { ...pendingPatches };
           pendingPatches = {};
           isBatching = false;
+
           Object.keys(final).forEach((k) => notify(k as keyof T));
+          notifyAll();
         });
       }
     },
+
+    __subscribeAll: subscribeAll,
   };
 
-  return () => instance;
+  return instance;
 }
 
-// --- 3. PUBLIC API ---
+// --- 4. PUBLIC API ---
 
 export function CreateSquirrelStore<T extends object>(
   initialState: T,
-): () => SquirrelStoreInstance<T> {
-  let _lazy: (() => SquirrelStoreInstance<T>) | null = null;
-  return () => {
-    if (!_lazy) _lazy = InternalSquirrelEngine<T>(initialState);
-    return _lazy();
-  };
+): SquirrelStoreInstance<T> {
+  return InternalSquirrelEngine<T>(initialState);
 }
 
 export function CombineSquirrelStore<
-  T extends Record<string, () => SquirrelStoreInstance<any>>,
->(getStores: () => T): () => CombinedSquirrelInstance<T> {
-  let _combined: CombinedSquirrelInstance<T> | null = null;
-  let _resolved: T;
-
-  return function () {
-    if (!_combined) {
-      _resolved = getStores();
-
-      const getrawValueState = () => {
-        const res: any = {};
-        for (const k in _resolved) res[k] = _resolved[k]().get().rawValue;
-        return res;
-      };
-
-      /** Combined Leaf: Watches every property in every sub-store */
-      const CombinedLeaf = ({
-        transform,
-      }: {
-        transform: (s: any) => ReactNode;
-      }) => {
-        const spanRef = useRef<HTMLSpanElement>(null);
-        useLayoutEffect(() => {
-          const el = spanRef.current;
-          if (!el) return;
-          const update = () => {
-            el.textContent = String(transform(getrawValueState()));
-          };
-          update();
-          const cleanupFns: (() => void)[] = [];
-          for (const k in _resolved) {
-            const subStore = _resolved[k]();
-            const keys = Object.keys(subStore.get().rawValue);
-            // We use the sub-store's set to register a hidden listener
-            subStore.set((prev: any) => {
-              queueMicrotask(update);
-              return prev;
-            });
-          }
-          return () => cleanupFns.forEach((f) => f());
-        }, [transform]);
-        return createElement("span", { ref: spanRef });
-      };
-
-      const createCombinedProxy = (): CombinedNodeValueProxy<T> => {
-        const baseFn = (transform: (s: any) => ReactNode) =>
-          createElement(CombinedLeaf, { transform });
-        return new Proxy(baseFn, {
-          get: (target, prop: string) => {
-            if (prop in target) return (target as any)[prop];
-            return _resolved[prop]?.().get().nodeValue;
-          },
-        }) as any;
-      };
-
-      _combined = {
-        get: () => ({
-          nodeValue: createCombinedProxy(),
-          rawValue: getrawValueState(),
-        }),
-        set: (p) => {
-          for (const k in p) if (_resolved[k]) _resolved[k]().set(p[k] as any);
-        },
-        setAsync: (p) => {
-          for (const k in p)
-            if (_resolved[k]) _resolved[k]().setAsync(p[k] as any);
-        },
-      };
+  T extends Record<string, SquirrelStoreInstance<any>>,
+>(stores: T): CombinedSquirrelInstance<T> {
+  const getRaw = (): CombinedRawValueState<T> => {
+    const res: any = {};
+    for (const k in stores) {
+      res[k] = stores[k].get().rawValue.static;
     }
-    return _combined;
+    return res;
+  };
+
+  const subscribeCombined = (callback: () => void) => {
+    const cleanups: Array<() => void> = [];
+
+    for (const k in stores) {
+      const unsub = stores[k].__subscribeAll?.(callback);
+      if (unsub) cleanups.push(unsub);
+    }
+
+    return () => {
+      cleanups.forEach((fn) => fn());
+    };
+  };
+
+  const useReactiveCombinedRaw = () =>
+    useSyncExternalStore(subscribeCombined, getRaw, getRaw);
+
+  const CombinedLeaf = ({
+    transform,
+  }: {
+    transform: (s: CombinedRawValueState<T>) => ReactNode;
+  }) => {
+    const snapshot = useReactiveCombinedRaw();
+
+    return createElement(Fragment, null, processOutput(transform(snapshot)));
+  };
+
+  const createCombinedNodeValueProxy = (): CombinedNodeValueProxy<T> => {
+    const baseFn = (transform: (s: CombinedRawValueState<T>) => ReactNode) =>
+      createElement(CombinedLeaf, { transform });
+
+    return new Proxy(baseFn, {
+      get: (target, prop: string) => {
+        if (prop in target) return (target as any)[prop];
+        return stores[prop as keyof T]?.get().nodeValue;
+      },
+    }) as any;
+  };
+
+  const createCombinedRawValueAccess = (): CombinedRawValueAccess<T> => {
+    return {
+      get static() {
+        return getRaw();
+      },
+      get reactive() {
+        return useReactiveCombinedRaw();
+      },
+    };
+  };
+
+  return {
+    get: () => ({
+      nodeValue: createCombinedNodeValueProxy(),
+      rawValue: createCombinedRawValueAccess(),
+    }),
+
+    set: (patches) => {
+      for (const k in patches) {
+        if (stores[k] && patches[k] != null) {
+          stores[k].set(patches[k] as any);
+        }
+      }
+    },
+
+    setAsync: (patches) => {
+      for (const k in patches) {
+        if (stores[k] && patches[k] != null) {
+          stores[k].setAsync(patches[k] as any);
+        }
+      }
+    },
   };
 }

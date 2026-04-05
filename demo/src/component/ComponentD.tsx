@@ -5,7 +5,7 @@ export const storeD = CreateSquirrelStore({ countD: 0 });
 
 export default function ComponentD() {
   console.log("%cRENDER: Component D", "color: purple");
-  const { get, setAsync } = allCounters();
+  const { get, setAsync } = allCounters;
 
   return (
     <div style={{ border: "2px solid purple", padding: "10px" }}>
@@ -14,9 +14,9 @@ export default function ComponentD() {
       <button
         onClick={() =>
           setAsync({
-            A: { countA: get().rawValue.A.countA + 1 },
-            B: { countB: get().rawValue.B.countB + 1 },
-            C: { countC: get().rawValue.C.countC + 1 },
+            A: { countA: get().rawValue.static.A.countA + 1 },
+            B: { countB: get().rawValue.static.B.countB + 1 },
+            C: { countC: get().rawValue.static.C.countC + 1 },
           })
         }
       >
