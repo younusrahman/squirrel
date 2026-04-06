@@ -34,22 +34,22 @@ type CombinedRawValueAccess<T> = {
 };
 
 export interface SquirrelStoreInstance<T> {
-  get: () => { nodeValue: NodeValueProxy<T>; rawValue: RawValueAccess<T> };
+  readonly nodeValue: NodeValueProxy<T>;
+  readonly rawValue: RawValueAccess<T>;
   set: (next: Partial<T> | ((prev: T) => Partial<T>)) => void;
   setAsync: (next: Partial<T> | ((prev: T) => Partial<T>)) => void;
   __subscribeAll?: (callback: () => void) => () => void;
 }
 
 export interface CombinedSquirrelInstance<T> {
-  get: () => {
-    nodeValue: CombinedNodeValueProxy<T>;
-    rawValue: CombinedRawValueAccess<T>;
-  };
+  readonly nodeValue: CombinedNodeValueProxy<T>;
+  readonly rawValue: CombinedRawValueAccess<T>;
   set: (patches: { [K in keyof T]?: Partial<ExtractState<T[K]>> }) => void;
   setAsync: (patches: { [K in keyof T]?: Partial<ExtractState<T[K]>> }) => void;
 }
 
 type UpdateFn = (latestState: any) => void;
+type StoreMap = Record<string, SquirrelStoreInstance<any>>;
 
 // --- 2. UTILS ---
 
@@ -152,24 +152,25 @@ function InternalSquirrelEngine<T extends object>(
     }) as any;
   };
 
-  const createRawValueAccess = (): RawValueAccess<T> => {
-    return {
-      get static() {
-        return state as Readonly<T>;
-      },
-      get reactive() {
-        return useReactiveRaw();
-      },
-    };
-  };
+  const createRawValueAccess = (): RawValueAccess<T> => ({
+    get static() {
+      return state as Readonly<T>;
+    },
+    get reactive() {
+      return useReactiveRaw();
+    },
+  });
 
-  const instance: SquirrelStoreInstance<T> = {
-    get: () => ({
-      nodeValue: createNodeValueProxy(),
-      rawValue: createRawValueAccess(),
-    }),
+  const instance = {
+    get nodeValue() {
+      return createNodeValueProxy();
+    },
 
-    set: (next) => {
+    get rawValue() {
+      return createRawValueAccess();
+    },
+
+    set: (next: Partial<T> | ((prev: T) => Partial<T>)) => {
       const patches = typeof next === "function" ? next(state) : next;
       if (!patches || typeof patches !== "object") return;
 
@@ -178,7 +179,7 @@ function InternalSquirrelEngine<T extends object>(
       notifyAll();
     },
 
-    setAsync: (next) => {
+    setAsync: (next: Partial<T> | ((prev: T) => Partial<T>)) => {
       const patches = typeof next === "function" ? next(state) : next;
       if (!patches || typeof patches !== "object") return;
 
@@ -199,7 +200,7 @@ function InternalSquirrelEngine<T extends object>(
     },
 
     __subscribeAll: subscribeAll,
-  };
+  } satisfies SquirrelStoreInstance<T>;
 
   return instance;
 }
@@ -212,18 +213,34 @@ export function CreateSquirrelStore<T extends object>(
   return InternalSquirrelEngine<T>(initialState);
 }
 
-export function CombineSquirrelStore<
-  T extends Record<string, SquirrelStoreInstance<any>>,
->(stores: T): CombinedSquirrelInstance<T> {
-  const getRaw = (): CombinedRawValueState<T> => {
-    const res: any = {};
-    for (const k in stores) {
-      res[k] = stores[k].get().rawValue.static;
+export function CombineSquirrelStore<T extends StoreMap>(
+  storesOrFactory: T | (() => T),
+): CombinedSquirrelInstance<T> {
+  let resolvedStores: T | null = null;
+
+  const resolveStores = (): T => {
+    if (!resolvedStores) {
+      resolvedStores =
+        typeof storesOrFactory === "function"
+          ? (storesOrFactory as () => T)()
+          : storesOrFactory;
     }
+    return resolvedStores;
+  };
+
+  const getRaw = (): CombinedRawValueState<T> => {
+    const stores = resolveStores();
+    const res: any = {};
+
+    for (const k in stores) {
+      res[k] = stores[k].rawValue.static;
+    }
+
     return res;
   };
 
   const subscribeCombined = (callback: () => void) => {
+    const stores = resolveStores();
     const cleanups: Array<() => void> = [];
 
     for (const k in stores) {
@@ -245,7 +262,6 @@ export function CombineSquirrelStore<
     transform: (s: CombinedRawValueState<T>) => ReactNode;
   }) => {
     const snapshot = useReactiveCombinedRaw();
-
     return createElement(Fragment, null, processOutput(transform(snapshot)));
   };
 
@@ -256,29 +272,32 @@ export function CombineSquirrelStore<
     return new Proxy(baseFn, {
       get: (target, prop: string) => {
         if (prop in target) return (target as any)[prop];
-        return stores[prop as keyof T]?.get().nodeValue;
+        return resolveStores()[prop as keyof T]?.nodeValue;
       },
     }) as any;
   };
 
-  const createCombinedRawValueAccess = (): CombinedRawValueAccess<T> => {
-    return {
-      get static() {
-        return getRaw();
-      },
-      get reactive() {
-        return useReactiveCombinedRaw();
-      },
-    };
-  };
+  const createCombinedRawValueAccess = (): CombinedRawValueAccess<T> => ({
+    get static() {
+      return getRaw();
+    },
+    get reactive() {
+      return useReactiveCombinedRaw();
+    },
+  });
 
-  return {
-    get: () => ({
-      nodeValue: createCombinedNodeValueProxy(),
-      rawValue: createCombinedRawValueAccess(),
-    }),
+  const instance = {
+    get nodeValue() {
+      return createCombinedNodeValueProxy();
+    },
 
-    set: (patches) => {
+    get rawValue() {
+      return createCombinedRawValueAccess();
+    },
+
+    set: (patches: { [K in keyof T]?: Partial<ExtractState<T[K]>> }) => {
+      const stores = resolveStores();
+
       for (const k in patches) {
         if (stores[k] && patches[k] != null) {
           stores[k].set(patches[k] as any);
@@ -286,12 +305,16 @@ export function CombineSquirrelStore<
       }
     },
 
-    setAsync: (patches) => {
+    setAsync: (patches: { [K in keyof T]?: Partial<ExtractState<T[K]>> }) => {
+      const stores = resolveStores();
+
       for (const k in patches) {
         if (stores[k] && patches[k] != null) {
           stores[k].setAsync(patches[k] as any);
         }
       }
     },
-  };
+  } satisfies CombinedSquirrelInstance<T>;
+
+  return instance;
 }

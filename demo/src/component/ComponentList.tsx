@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { CreateSquirrelStore } from "squirrel";
 
 const users = CreateSquirrelStore({
@@ -30,7 +30,6 @@ export function UserWorkList() {
       {mode === "list1" && (
         <ul>
           {users
-            .get()
             .rawValue.static.userList.map((u) => (
               <li key={u.id}>
                 <strong>{u.name}</strong> — {u.workTime}
@@ -42,7 +41,6 @@ export function UserWorkList() {
       {/* Second mapping (nodeValue) */}
       {mode === "list2" &&
         users
-          .get()
           .nodeValue((val) => {
             return (
               <ul>

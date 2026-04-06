@@ -7,7 +7,7 @@ export const storeE = CreateSquirrelStore({
 });
 
 export default function ComponentE() {
-  const { get, set, setAsync } = allCounters;
+  const { set, setAsync } = allCounters;
 
   const handleUpdate = (isAsync: boolean) => {
     const method = isAsync ? setAsync : set;
@@ -24,7 +24,7 @@ export default function ComponentE() {
       style={{ border: "1px solid black", padding: "10px", marginTop: "10px" }}
     >
       <h3>Component E</h3>
-      <p>Status: {get().nodeValue.E.status}</p>
+      <p>Status: {allCounters.nodeValue.E.status}</p>
       <button onClick={() => handleUpdate(false)}>Sync Update</button>
       <button onClick={() => handleUpdate(true)}>Async Update</button>
     </div>

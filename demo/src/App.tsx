@@ -8,7 +8,6 @@ import { UserWorkList } from "./component/ComponentList";
 import { allCounters } from "./component/sharedLogic";
 
 function App() {
-  const { get } = allCounters;
   return (
     <div style={{ padding: "20px" }}>
       <h1>Squirrel 5-Component System</h1>
@@ -16,8 +15,8 @@ function App() {
       {/* Global Display */}
       <div style={{ background: "#333", color: "white", padding: "10px" }}>
         <p>
-          A: {get().nodeValue.A.countA} | B: {get().nodeValue.B.countB} | C:{" "}
-          {get().nodeValue.C.countC} | D: {get().nodeValue.D.countD}
+          A: {allCounters.nodeValue.A.countA} | B: {allCounters.nodeValue.B.countB} | C:{" "}
+          {allCounters.nodeValue.C.countC} | D: {allCounters.nodeValue.D.countD}
         </p>
       </div>
 
