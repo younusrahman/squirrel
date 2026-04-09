@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="/squirrel/assets/images/squirrel-image-preview.png" alt="Squirrel" width="300" />
+  <img src="/squirrel/assets/images/Squrrel-State-management.png" alt="Squirrel" width="500" />
 </p>
 
 # Squirrel
