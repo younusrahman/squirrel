@@ -1,9 +1,11 @@
-<p align="center">
+<div align="center">
   <img src="/squirrel/assets/images/Squrrel-State-management.png" alt="Squirrel" width="450" />
-  <h4 style={{ font-weight: bold}}> 
-    <a href="https://younusrahman.github.io/squirrel/">Squirrel Demo</a>
-  </h4>
-</p>
+  <p>
+    <a href="https://younusrahman.github.io/squirrel/" style="font-weight: bold; font-size: 20px;">
+      Squirrel Demo
+    </a>
+  </p>
+</div>
 
 # Squirrel
 
