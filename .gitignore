@@ -1,0 +1,89 @@
+# ============================================================================
+# GLOBAL .gitignore for squirrel (DemoApplication + squirrel package)
+# ============================================================================
+
+# --- OS / Editor ---
+.DS_Store
+.DS_Store?
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+*.log
+
+# --- Node / Package managers ---
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-store/
+.pnp.*
+.pnp.cjs
+.npmrc
+
+# --- Env files ---
+.env
+.env.*
+!.env.example
+
+# --- Build outputs ---
+dist/
+build/
+out/
+lib/
+esm/
+cjs/
+coverage/
+*.tsbuildinfo
+
+# --- Vite / React tooling caches ---
+.vite/
+.vite-cache/
+.vitest/
+.eslintcache
+.cache/
+.parcel-cache/
+
+# --- TypeScript ---
+*.d.ts.map
+*.tsbuildinfo
+
+# --- Testing ---
+coverage/
+.nyc_output/
+
+# --- Local files / temp ---
+tmp/
+temp/
+*.tmp
+
+# --- Optional: lockfiles policy ---
+# If you want to keep lockfiles committed, REMOVE the lines below.
+# (Right now your repo contains package-lock.json files, so you probably want to KEEP them.)
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml
+
+# --- DemoApplication specific ---
+DemoApplication/node_modules/
+DemoApplication/dist/
+DemoApplication/.vite/
+DemoApplication/.env
+DemoApplication/.env.*
+
+# --- squirrel package specific ---
+squirrel/node_modules/
+squirrel/dist/
+squirrel/lib/
+squirrel/esm/
+squirrel/cjs/
+squirrel/.env
+squirrel/.env.*
