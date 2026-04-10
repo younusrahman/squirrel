@@ -1,1 +1,2 @@
-export { CreateSquirrelStore, CombineSquirrelStore } from "./store";
+export { CombineSquirrelStore } from "./combine-store";
+export { CreateSquirrelStore } from "./create-store";
