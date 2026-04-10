@@ -1,3 +1,5 @@
+// src/lib/squirrel.ts
+
 import React, {
   useLayoutEffect,
   useState,
@@ -77,6 +79,17 @@ function InternalSquirrelEngine<T extends object>(
   const subscribers = new Map<keyof T, Set<UpdateFn>>();
   const globalSubscribers = new Set<() => void>();
 
+  // ✅ FIX: Stable function references - defined once in closure
+  const getSnapshot = (): Readonly<T> => state;
+  const getServerSnapshot = (): Readonly<T> => state;
+
+  const subscribeAll = (callback: () => void): (() => void) => {
+    globalSubscribers.add(callback);
+    return () => {
+      globalSubscribers.delete(callback);
+    };
+  };
+
   const notify = (key: keyof T) => {
     subscribers.get(key)?.forEach((update) => update(state));
   };
@@ -85,19 +98,9 @@ function InternalSquirrelEngine<T extends object>(
     globalSubscribers.forEach((fn) => fn());
   };
 
-  const subscribeAll = (callback: () => void) => {
-    globalSubscribers.add(callback);
-    return () => {
-      globalSubscribers.delete(callback);
-    };
-  };
-
-  const useReactiveRaw = () =>
-    useSyncExternalStore(
-      subscribeAll,
-      () => state as Readonly<T>,
-      () => state as Readonly<T>,
-    );
+  // ✅ FIX: Use stable function references
+  const useReactiveRaw = (): Readonly<T> =>
+    useSyncExternalStore(subscribeAll, getSnapshot, getServerSnapshot);
 
   const SquirrelLeaf = ({
     transform,
@@ -218,6 +221,9 @@ export function CombineSquirrelStore<T extends StoreMap>(
 ): CombinedSquirrelInstance<T> {
   let resolvedStores: T | null = null;
 
+  // ✅ FIX: Cache the snapshot to prevent infinite loops
+  let cachedSnapshot: CombinedRawValueState<T> | null = null;
+
   const resolveStores = (): T => {
     if (!resolvedStores) {
       resolvedStores =
@@ -228,23 +234,39 @@ export function CombineSquirrelStore<T extends StoreMap>(
     return resolvedStores;
   };
 
-  const getRaw = (): CombinedRawValueState<T> => {
+  // ✅ FIX: Build snapshot and cache it
+  const buildSnapshot = (): CombinedRawValueState<T> => {
     const stores = resolveStores();
     const res: any = {};
-
     for (const k in stores) {
       res[k] = stores[k].rawValue.static;
     }
-
     return res;
   };
 
-  const subscribeCombined = (callback: () => void) => {
+  // ✅ FIX: Return cached snapshot (stable reference)
+  const getSnapshot = (): CombinedRawValueState<T> => {
+    if (cachedSnapshot === null) {
+      cachedSnapshot = buildSnapshot();
+    }
+    return cachedSnapshot;
+  };
+
+  const getServerSnapshot = (): CombinedRawValueState<T> => {
+    return getSnapshot();
+  };
+
+  // ✅ FIX: Invalidate cache when any child store changes
+  const subscribeCombined = (callback: () => void): (() => void) => {
     const stores = resolveStores();
     const cleanups: Array<() => void> = [];
 
     for (const k in stores) {
-      const unsub = stores[k].__subscribeAll?.(callback);
+      const unsub = stores[k].__subscribeAll?.(() => {
+        // Invalidate and rebuild cache BEFORE notifying React
+        cachedSnapshot = buildSnapshot();
+        callback();
+      });
       if (unsub) cleanups.push(unsub);
     }
 
@@ -253,8 +275,9 @@ export function CombineSquirrelStore<T extends StoreMap>(
     };
   };
 
-  const useReactiveCombinedRaw = () =>
-    useSyncExternalStore(subscribeCombined, getRaw, getRaw);
+  // ✅ FIX: Use stable function references
+  const useReactiveCombinedRaw = (): CombinedRawValueState<T> =>
+    useSyncExternalStore(subscribeCombined, getSnapshot, getServerSnapshot);
 
   const CombinedLeaf = ({
     transform,
@@ -279,7 +302,7 @@ export function CombineSquirrelStore<T extends StoreMap>(
 
   const createCombinedRawValueAccess = (): CombinedRawValueAccess<T> => ({
     get static() {
-      return getRaw();
+      return getSnapshot(); // ✅ Use cached snapshot
     },
     get reactive() {
       return useReactiveCombinedRaw();
