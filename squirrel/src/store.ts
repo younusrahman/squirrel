@@ -1,6 +1,6 @@
 // src/lib/squirrel.ts
 
-import React, {
+import {
   useLayoutEffect,
   useState,
   createElement,
@@ -8,7 +8,7 @@ import React, {
   isValidElement,
   cloneElement,
   Children,
-  ReactNode,
+  type ReactNode,
   useSyncExternalStore,
 } from "react";
 
