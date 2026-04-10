@@ -1,6 +1,17 @@
-import { useSyncExternalStore, ReactNode, useState, useLayoutEffect, createElement } from "react";
+import {
+  useSyncExternalStore,
+  type ReactNode,
+  useState,
+  useLayoutEffect,
+  createElement,
+} from "react";
 import { Fragment } from "react/jsx-runtime";
-import { SquirrelStoreInstance, UpdateFn, NodeValueProxy, RawValueAccess } from "./types";
+import type {
+  SquirrelStoreInstance,
+  UpdateFn,
+  NodeValueProxy,
+  RawValueAccess,
+} from "./types";
 import { processOutput } from "./utils";
 
 function InternalSquirrelEngine<T extends object>(

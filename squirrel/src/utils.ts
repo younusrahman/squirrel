@@ -1,4 +1,4 @@
-import { ReactNode, Children, isValidElement, cloneElement } from "react";
+import { type ReactNode, Children, isValidElement, cloneElement } from "react";
 
 export function processOutput(node: ReactNode): ReactNode {
   if (Array.isArray(node)) {

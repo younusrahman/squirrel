@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { type ReactNode } from "react";
 
 export type ExtractState<T> =
   T extends SquirrelStoreInstance<infer S> ? S : never;

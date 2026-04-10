@@ -4,7 +4,7 @@ import {
   type ReactNode,
   useSyncExternalStore,
 } from "react";
-import {
+import type {
   CombinedNodeValueProxy,
   CombinedRawValueAccess,
   CombinedRawValueState,
