@@ -9,7 +9,7 @@
     "jsx": "react-jsx",
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "types": ["react"]
+    "types": ["react", "jest", "@testing-library/jest-dom"]
   },
-  "include": ["src"]
+  "include": ["src", "__tests__"]
 }
