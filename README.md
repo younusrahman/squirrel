@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="/squirrel/assets/images/Squrrel-State-management.png" alt="Squirrel" width="450" />
+  <img src="/squirrel/assets/images/Squrrel-State-management.svg" alt="Squirrel" width="450" />
   <p>
     <a href="https://younusrahman.github.io/squirrel/" style="font-weight: bold; font-size: 20px;">
       Squirrel Demo
