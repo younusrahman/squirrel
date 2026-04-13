@@ -1,11 +1,10 @@
 import { CreateSquirrelStore, CombineSquirrelStore } from "squirrel";
-import type { AppStoreMap, CounterState, LazyAppStoreMap, SettingsState, UserState } from "./types";
 
 // ============================================================================
 // SINGLE STORES
 // ============================================================================
 
-export const userStore = CreateSquirrelStore<UserState>({
+export const userStore = CreateSquirrelStore({
   firstName: "John",
   lastName: "Doe",
   email: "john@example.com",
@@ -13,13 +12,13 @@ export const userStore = CreateSquirrelStore<UserState>({
   isOnline: true,
 });
 
-export const counterStore = CreateSquirrelStore<CounterState>({
+export const counterStore = CreateSquirrelStore({
   count: 0,
   step: 1,
   lastUpdated: Date.now(),
 });
 
-export const settingsStore = CreateSquirrelStore<SettingsState>({
+export const settingsStore = CreateSquirrelStore({
   theme: "dark" as "dark" | "light",
   fontSize: 14,
   notifications: true,
@@ -29,13 +28,15 @@ export const settingsStore = CreateSquirrelStore<SettingsState>({
 // COMBINED STORES
 // ============================================================================
 
-export const appStore = CombineSquirrelStore<AppStoreMap>({
+// EAGER: Stores resolved immediately
+export const appStore = CombineSquirrelStore({
   user: userStore,
   counter: counterStore,
   settings: settingsStore,
 });
 
-export const lazyAppStore = CombineSquirrelStore<LazyAppStoreMap>(() => ({
+// LAZY: Stores resolved on first access (for circular imports)
+export const lazyAppStore = CombineSquirrelStore(() => ({
   user: userStore,
   counter: counterStore,
 }));
