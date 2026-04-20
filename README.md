@@ -940,4 +940,4 @@ export function Example() {
 - nodeValue for reactive leaf rendering
 - rawValue.static for snapshots
 - rawValue.reactive for parent re-rendering
-- lazy combined callback when circular imports exist
+- lazy combined callback when circular imports exist (This is test)
