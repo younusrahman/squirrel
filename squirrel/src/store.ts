@@ -238,7 +238,6 @@ export function CombineSquirrelStore<T extends StoreMap>(
     return res;
   };
 
-  // ✅ FIX: Return cached snapshot (stable reference)
   const getSnapshot = (): CombinedRawValueState<T> => {
     if (cachedSnapshot === null) {
       cachedSnapshot = buildSnapshot();
@@ -256,7 +255,6 @@ export function CombineSquirrelStore<T extends StoreMap>(
 
     for (const k in stores) {
       const unsub = stores[k].__subscribeAll?.(() => {
-        // Invalidate and rebuild cache BEFORE notifying React
         cachedSnapshot = buildSnapshot();
         callback();
       });
@@ -294,7 +292,7 @@ export function CombineSquirrelStore<T extends StoreMap>(
 
   const createCombinedRawValueAccess = (): CombinedRawValueAccess<T> => ({
     get static() {
-      return getSnapshot(); // ✅ Use cached snapshot
+      return getSnapshot();
     },
     get reactive() {
       return useReactiveCombinedRaw();
