@@ -4,12 +4,17 @@
     "module": "ESNext",
     "lib": ["DOM", "DOM.Iterable", "ESNext"],
     "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "outDir": "./dist",
+    "rootDir": "./src",
     "moduleResolution": "bundler",
     "strict": true,
     "jsx": "react-jsx",
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "types": ["react", "jest", "@testing-library/jest-dom"]
+    "types": ["react"]
   },
-  "include": ["src", "__tests__"]
+  "include": ["src"],
+  "exclude": ["node_modules", "dist"]
 }

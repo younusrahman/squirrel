@@ -5,5 +5,16 @@
   "workspaces": [
     "squirrel",
     "DemoApplication"
-  ]
+  ],
+  "scripts": {
+    "dev": "npm run dev:squirrel & npm run dev:demo",
+    "dev:squirrel": "npm run dev -w squirrel",
+    "dev:demo": "npm run dev -w demoapplication",
+    "build": "npm run build -w squirrel && npm run build -w demoapplication",
+    "build:squirrel": "npm run build -w squirrel",
+    "build:demo": "npm run build -w demoapplication",
+    "test": "npm run test -w squirrel",
+    "lint": "npm run lint -w demoapplication",
+    "deploy": "npm run deploy -w demoapplication"
+  }
 }
